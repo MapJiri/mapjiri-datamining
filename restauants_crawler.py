@@ -28,7 +28,7 @@ restaurants = []
 WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CLASS_NAME, "placelist")))
 time.sleep(3)
 
-for current_page in range(1, 2):  # 1페이지부터 5페이지까지 크롤링
+for current_page in range(1, 4):  # 1페이지부터 5페이지까지 크롤링
     try:
         print(f"현재 페이지: {current_page}")
 
@@ -85,7 +85,7 @@ for current_page in range(1, 2):  # 1페이지부터 5페이지까지 크롤링
 
                     # 모든 리뷰 수집
                     review_elements = driver.find_elements(By.CSS_SELECTOR, "ul.list_evaluation > li")
-                    for review in review_elements:
+                    for review in review_elements[:50]:
                         try:
                             review_text = review.find_element(By.CLASS_NAME, "txt_comment").text  # 리뷰 내용
                             rating_style = review.find_element(By.CLASS_NAME, "inner_star").get_attribute("style")
@@ -128,8 +128,8 @@ for current_page in range(1, 2):  # 1페이지부터 5페이지까지 크롤링
                 print(f"Error on store: {e}")
                 continue
 
-        # 페이지 번호 클릭 (1~5)
-        if current_page < 2:
+        # 페이지 번호 클릭 (1~3)
+        if current_page < 4:
             try:
                 page_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.ID, f"info.search.page.no{current_page + 1}"))
@@ -149,8 +149,8 @@ df = pd.DataFrame(restaurants)
 
 # CSV 파일이 빈 데이터가 아닌지 확인
 if not df.empty:
-    df.to_csv("daejun_japanese_restaurants_all_reviews2.csv", index=False, encoding="utf-8-sig")
-    print("CSV 저장 완료: daejun_japanese_restaurants_all_reviews2.csv")
+    df.to_csv("대전 장대동 짜장면.csv", index=False, encoding="utf-8-sig")
+    print("CSV 저장 완료: 대전 장대동 짜장면.csv")
 else:
     print("저장할 데이터가 없습니다.")
 
