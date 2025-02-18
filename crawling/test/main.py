@@ -8,8 +8,36 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 import time
+import requests  #  API 요청을 위한 라이브러리 
+import boto3  # AWS SQS 메시지 처리를 위한 라이브러리 
+
+
+sqs = boto3.client("sqs")
+SQS_QUEUE_URL = "https://sqs.ap-northeast-2.amazonaws.com/182399700501/crawling_keyword"
+API_URL = "http://13.124.190.196/api/v1/restaurant/info"
 
 def handler(event=None, context=None):
+    # 📌 SQS 메시지 가져오기
+    response = sqs.receive_message(
+        QueueUrl=SQS_QUEUE_URL,
+        MaxNumberOfMessages=1,  
+        WaitTimeSeconds=10  
+    )
+    # 📌 메시지가 없을 경우 처리
+    if "Messages" not in response:
+        print("📌 처리할 메시지가 없습니다.")
+        return {"statusCode": 400, "body": json.dumps("No messages to process")}
+
+    # SQS 메시지에서 데이터 가져오기
+    message = response["Messages"][0]
+    receipt_handle = message["ReceiptHandle"]
+
+    keyword_data = json.loads(message["Body"])  # {"dong": "오정동", "keyword": "파스타"}
+    district = keyword_data.get("dong", "기본동")  # 기본값 설정
+    menu = keyword_data.get("keyword", "기본메뉴")
+    
+
+
     # 웹드라이버 설정
     chrome_options = webdriver.ChromeOptions()
     chrome_options.binary_location = "/opt/chrome/chrome"
@@ -27,12 +55,8 @@ def handler(event=None, context=None):
 
     # 카카오맵 접속
     driver.get("https://map.kakao.com/")
-
-    district = "장대동"
-    menu = "쌀국수"
-
     search_query = f"대전 {district} {menu}"
-
+    
     # 검색 실행
     input_tag = driver.find_element(By.ID, "search.keyword.query")
     input_tag.send_keys(search_query)
@@ -71,11 +95,13 @@ def handler(event=None, context=None):
             except:
                 store_name = "가게 정보 없음"
 
-            # 시설 정보
+            # 가게 주소명
             try:
-                facility_info = driver.find_element(By.CLASS_NAME, "placeinfo_facility").text
+                place_name = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, '//*[@id="mArticle"]/div[1]/div[2]/div[1]/div/span[1]'))
+                ).text.strip()
             except:
-                facility_info = "시설 정보 없음"
+                place_name = "주소 정보 없음"
 
             # 추천 포인트 크롤링
             try:
@@ -128,10 +154,10 @@ def handler(event=None, context=None):
                             photo_url = None
 
                         reviews.append({
-                            "review_text": review_text,
+                            "reviewText": review_text,
                             "rating": rating,
                             "date": date,
-                            "photo_url": photo_url,
+                            "photoUrl": photo_url,
                         })
                     except:
                         continue
@@ -141,8 +167,8 @@ def handler(event=None, context=None):
             # 데이터 저장
             restaurants.append({
                 "name": store_name,
-                "facility_info": facility_info,
-                "tag": tag_list,
+                "address": place_name,
+                "tags": tag_list,
                 "reviews": reviews
             })
 
@@ -193,17 +219,25 @@ def handler(event=None, context=None):
         except:
             break
 
-    # JSON 저장
-    # filename = f"{search_query.replace(' ', '_')}.json"
-    # if restaurants:
-    #     with open(filename, "w", encoding="utf-8") as f:
-    #         json.dump(restaurants, f, ensure_ascii=False, indent=4)
-    # else:
-    #     print("저장할 데이터가 없습니다.")
-
-
     # 드라이버 종료
     driver.quit()
+
+    # 📌 API 요청 데이터 생성
+    request_body = {"list": restaurants}
+    headers = {"Content-Type": "application/json"}
+
+    # 📌 API 호출
+    try:
+        response = requests.post(API_URL, headers=headers, json=request_body)
+        response_data = response.json()
+        print(f"📌 API 응답: {response.status_code}, 내용: {response_data}")
+
+            # 📌 SQS 메시지 삭제 (성공적으로 처리된 경우)
+        sqs.delete_message(QueueUrl=SQS_QUEUE_URL, ReceiptHandle=receipt_handle)
+        print(f"✅ SQS 메시지 삭제 완료: {district} - {menu}")
+
+    except Exception as e:
+        print(f"🚨 API 요청 실패: {str(e)}")
 
     # JSON 데이터 직접 반환
     return {
