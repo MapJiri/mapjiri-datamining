@@ -14,7 +14,7 @@ import boto3  # AWS SQS 메시지 처리를 위한 라이브러리
 
 sqs = boto3.client("sqs")
 SQS_QUEUE_URL = "https://sqs.ap-northeast-2.amazonaws.com/182399700501/crawling_keyword"
-API_URL = "http://13.124.190.196/api/v1/restaurant/info"
+API_URL = "http://13.124.190.196:8080/api/v1/restaurant/info"
 
 def handler(event=None, context=None):
     # 📌 SQS 메시지 가져오기
