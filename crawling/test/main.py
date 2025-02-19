@@ -100,8 +100,13 @@ def handler(event=None, context=None):
                 place_name = WebDriverWait(driver, 5).until(
                     EC.presence_of_element_located((By.XPATH, '//*[@id="mArticle"]/div[1]/div[2]/div[1]/div/span[1]'))
                 ).text.strip()
+
+                place_name_parts = place_name.split()[:4]
+                place_name_filtered = " ".join(place_name_parts)
             except:
-                place_name = "주소 정보 없음"
+                place_name_filtered = "주소 정보 없음"
+
+            ##
 
             # 추천 포인트 크롤링
             try:
@@ -167,7 +172,7 @@ def handler(event=None, context=None):
             # 데이터 저장
             restaurants.append({
                 "name": store_name,
-                "address": place_name,
+                "address": place_name_filtered,
                 "tags": tag_list,
                 "reviews": reviews
             })
