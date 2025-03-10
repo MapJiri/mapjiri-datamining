@@ -44,7 +44,8 @@
 - 요소3 개선. trade-off를 고려한 특정 주기마다(1일, 3일, 1주일 등) 크롤링하여 최신 정보 제공
 <br/> 
 
-
+### 참고/정리 링크
+[AWS Lambda 활용기](https://radical-ocean-d1e.notion.site/AWS-Lambda-1a1fb93e052980f0a51bf864273b130b)
 
 
 
